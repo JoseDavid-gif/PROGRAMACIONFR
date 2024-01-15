@@ -1,22 +1,23 @@
-import rx.lang.scala.{Observable, Subscriber}
+import akka.actor.ActorSystem
+import akka.stream.scaladsl.{Source, Sink, Flow}
 
-object ReactiveExample extends App {
+object OperadoresEjemplo extends App {
+  // Crear un sistema de actores (necesario para Akka Streams)
+  implicit val system: ActorSystem = ActorSystem("OperadoresEjemplo")
 
-  // Crear un Observable emitiendo números del 1 al 5
-  val observable: Observable[Int] = Observable.from(Seq(1, 2, 3, 4, 5))
+  // Fuente de números del 1 al 10
+  val numerosFuente = Source(1 to 10)
 
-  // Aplicar operadores: filtrar los números pares y luego mapearlos al cuadrado
-  val resultObservable: Observable[Int] = observable
-    .filter(_ % 2 == 0)
-    .map(x => x * x)
+  // Definir un flujo que filtra y duplica los números pares
+  val flujoOperadores = Flow[Int]
+    .filter(numero => numero % 2 == 0) // Filtra los números pares
+    .map(numero => numero * 2)         // Duplica los números
 
-  // Suscribirse al resultado y manejar los eventos
-  val subscriber: Subscriber[Int] = resultObservable.subscribe(
-    onNext = (value: Int) => println(s"Next: $value"),
-    onError = (error: Throwable) => println(s"Error: $error"),
-    onCompleted = () => println("Completed")
-  )
+  // Unir la fuente y el flujo de operadores, y conectarlos a un sumidero (sink)
+  val resultado = numerosFuente.via(flujoOperadores).runWith(Sink.foreach(println))
 
-  // Esperar a que el programa no termine inmediatamente
-  Thread.sleep(1000)
+  // Esperar a que el flujo se complete antes de cerrar el sistema de actores
+  resultado.onComplete(_ => system.terminate())
 }
+
+
